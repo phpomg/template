@@ -1,0 +1,14 @@
+{
+    "name": "phpomg/template",
+    "description": "php template engine!",
+    "license": "GPL-3.0",
+    "type": "library",
+    "require": {
+        "psr/simple-cache": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PHPOMG\\Template\\": "src/"
+        }
+    }
+}
