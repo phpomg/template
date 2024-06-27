@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace PHPOMG\Template;
 
@@ -102,13 +102,14 @@ class Template
         $this->filename = 'tpls://' . (is_string($filename) ? $filename : md5($string));
         file_put_contents($this->filename, $code);
 
-        return (function () {
+        return (string) (function () {
             try {
                 ob_start();
                 extract($this->data);
                 include $this->filename;
                 return ob_get_clean();
             } catch (Throwable $th) {
+                @ob_get_clean();
                 throw new RenderException($th->getMessage(), $th->getCode(), $th);
             }
         })();
@@ -134,10 +135,10 @@ class Template
                 return '<?php ' . $matchs[1] . '; ?>';
             },
             '/\{dump\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<pre><?php ob_start();var_dump(' . $matchs[1] . ');echo htmlspecialchars(ob_get_clean()); ?></pre>';
+                return '<pre><?php ob_start();var_dump(' . $matchs[1] . ');echo htmlspecialchars((string)ob_get_clean()); ?></pre>';
             },
             '/\{print\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<pre><?php echo htmlspecialchars(print_r(' . $matchs[1] . ', true)); ?></pre>';
+                return '<pre><?php echo htmlspecialchars((string)print_r(' . $matchs[1] . ', true)); ?></pre>';
             },
             '/\{echo\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
                 return '<?php echo ' . $matchs[1] . '; ?>';
@@ -174,13 +175,14 @@ class Template
                 return $this->parse($string);
             },
             '/\{(\$[^{}\'"]*)((\.[^{}\'"]+)+)\}/Ui' => function ($matchs) {
-                return '<?php echo htmlspecialchars(' . $matchs[1] . substr(str_replace('.', '\'][\'', $matchs[2]), 2) . '\']' . '); ?>';
+                $p = $matchs[1] . substr(str_replace('.', '\'][\'', $matchs[2]), 2) . '\']';
+                return '<?php echo htmlspecialchars((string)' . $p . '); ?>';
             },
             '/\{(\$[^{}]*)\}/Ui' => function ($matchs) {
-                return '<?php echo htmlspecialchars(' . $matchs[1] . '); ?>';
+                return '<?php echo htmlspecialchars((string)' . $matchs[1] . '); ?>';
             },
             '/\{:([^{}]*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<?php echo htmlspecialchars(' . $matchs[1] . '); ?>';
+                return '<?php echo htmlspecialchars((string)' . $matchs[1] . '); ?>';
             },
         ];
         $tags = array_merge($tags, $this->extends);
