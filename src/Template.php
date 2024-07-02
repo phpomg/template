@@ -1,6 +1,6 @@
 <?php
 
-declare (strict_types = 1);
+declare(strict_types=1);
 
 namespace PHPOMG\Template;
 
@@ -17,6 +17,8 @@ class Template
 
     protected $data = [];
     protected $filename = '';
+
+    private $literals = [];
 
     public function __construct()
     {
@@ -94,6 +96,11 @@ class Template
             $code = $this->cache->get($cache_key);
         } else {
             $code = $this->parse($string);
+            $code = str_replace(
+                array_keys($this->literals),
+                array_values($this->literals),
+                $code
+            );
             if ($this->cache) {
                 $this->cache->set($cache_key, $code);
             }
@@ -117,13 +124,11 @@ class Template
 
     public function parse(string $string): string
     {
-        $literals = [];
-        $string = preg_replace_callback('/{literal}([\s\S]*){\/literal}/Ui', function ($matchs) use (&$literals) {
+        $string = preg_replace_callback('/{literal}([\s\S]*){\/literal}/Ui', function ($matchs) {
             $key = '#' . md5($matchs[1]) . '#';
-            $literals[$key] = $matchs[1];
+            $this->literals[$key] = $matchs[1];
             return $key;
         }, $string);
-
         $tags = [
             '/\{(foreach|if|for|switch|while)\s+(.*)\}/Ui' => function ($matchs) {
                 return '<?php ' . $matchs[1] . ' (' . $matchs[2] . ') { ?>';
@@ -168,11 +173,25 @@ class Template
                 return '<?php }else{ ?>';
             },
             '/\{include\s*([\w\-_\.,@\/]*)\}/Ui' => function ($matchs) {
-                $string = '';
+                $str = '';
                 foreach (explode(',', $matchs[1]) as $tpl) {
-                    $string .= $this->getContent($tpl);
+                    $str .= $this->getContent($tpl);
                 }
-                return $this->parse($string);
+                return $this->parse($str);
+            },
+            '/\{css\s*([\w\-_\.,@\/]*)\}/Ui' => function ($matchs) {
+                $str = '';
+                foreach (explode(',', $matchs[1]) as $tpl) {
+                    $str .= '<style>' . $this->getContent($tpl) . '</style>';
+                }
+                return $this->parse('{literal}' . $str . '{/literal}');
+            },
+            '/\{js\s*([\w\-_\.,@\/]*)\}/Ui' => function ($matchs) {
+                $str = '';
+                foreach (explode(',', $matchs[1]) as $tpl) {
+                    $str .= '<script>' . $this->getContent($tpl) . '</script>';
+                }
+                return $this->parse('{literal}' . $str . '{/literal}');
             },
             '/\{(\$[^{}\'"]*)((\.[^{}\'"]+)+)\}/Ui' => function ($matchs) {
                 $p = $matchs[1] . substr(str_replace('.', '\'][\'', $matchs[2]), 2) . '\']';
@@ -189,10 +208,6 @@ class Template
         foreach ($tags as $preg => $callback) {
             $string = preg_replace_callback($preg, $callback, $string);
         }
-        return str_replace(
-            array_keys($literals),
-            array_values($literals),
-            $string
-        );
+        return $string;
     }
 }
